@@ -1,0 +1,13 @@
+# Chặn rác của .NET
+**/bin/
+**/obj/
+InteractHub.API/appsettings.Development.json
+
+# Chặn rác của React (UI)
+**/node_modules/
+**/dist/
+InteractHub.UI/.env
+
+# Chặn rác hệ thống
+.vscode/
+.DS_Store

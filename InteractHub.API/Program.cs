@@ -3,43 +3,76 @@ using InteractHub.API.Models;
 using Microsoft.EntityFrameworkCore;
 using InteractHub.API.Interfaces;
 using InteractHub.API.Repositories;
-using InteractHub.API.Middleware;
 using Microsoft.AspNetCore.Identity;
+
 var builder = WebApplication.CreateBuilder(args);
-// 1. Đăng ký Database Context (Kết nối SQL Server)
+
+// 1. DATABASE & IDENTITY
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-    // 2. Cấu hình Identity (Bảo mật tài khoản)
-// 2. Cấu hình Identity (Bảo mật tài khoản - Nâng cấp)
+
 builder.Services.AddIdentity<User, IdentityRole>(options => {
-    options.Password.RequireDigit = false; // Không bắt buộc có số
-    options.Password.RequiredLength = 6;   // Độ dài tối thiểu 6 ký tự
-    options.Password.RequireNonAlphanumeric = false; // Không bắt buộc ký tự đặc biệt (@, #, !)
-    options.Password.RequireUppercase = false; // Không bắt buộc viết hoa
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>();
-    // 3. Thêm bộ Controllers (Để sau này viết code trong thư mục Controllers)
+
+// 2. CẤU HÌNH CORS (GIẤY THÔNG HÀNH)
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowReact", policy => {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddControllers();
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-// Đăng ký Repository và Unit of Work
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 var app = builder.Build();
-app.UseMiddleware<ExceptionMiddleware>();
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+
+// 3. MIDDLEWARE
+if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowReact"); 
 app.UseHttpsRedirection();
-app.UseAuthentication(); //hệ thống biết ai đang đăng nhập
-app.UseAuthorization(); //Để phân quyền (Admin/User)
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapControllers();   
+// 4. API ĐĂNG KÝ "THẬT" - LƯU VÀO SQL SERVER
+app.MapPost("/api/Auth/register", async (RegisterDto model, UserManager<User> userManager) => 
+{
+    var userExists = await userManager.FindByNameAsync(model.UserName);
+    if (userExists != null) return Results.BadRequest(new { message = "Tên đăng nhập đã bị chiếm dụng!" });
+
+    var user = new User { 
+        UserName = model.UserName, 
+        Email = model.Email, 
+        FullName = model.FullName 
+    };
+
+    var result = await userManager.CreateAsync(user, model.Password);
+
+    if (result.Succeeded) {
+        return Results.Ok(new { message = "Gia nhập Biệt đội Bụi District thành công rực rỡ!" });
+    }
+
+    return Results.BadRequest(result.Errors);
+})
+.WithName("Register")
+.WithOpenApi();
+
+app.MapControllers();
 
 app.Run();
+
+// 5. ĐỊNH NGHĨA DỮ LIỆU (PHẢI NẰM DƯỚI CÙNG FILE)
+public record RegisterDto(string FullName, string Email, string UserName, string Password);

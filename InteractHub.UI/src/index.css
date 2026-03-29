@@ -1,0 +1,17 @@
+/* Import font Oswald thô cứng */
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Áp dụng font Oswald toàn trang */
+    font-family: 'Oswald', sans-serif;
+  }
+  body {
+    /* CHỖ NÀY: Đã bỏ chữ '-main' đi cho khớp với config */
+    @apply bg-bui-bg text-bui-text; 
+  }
+}

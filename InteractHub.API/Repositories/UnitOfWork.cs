@@ -7,7 +7,7 @@ namespace InteractHub.API.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly ApplicationDbContext _context;
-        private Hashtable _repositories;
+        private Hashtable? _repositories;
 
         public UnitOfWork(ApplicationDbContext context) => _context = context;
 
@@ -24,7 +24,7 @@ namespace InteractHub.API.Repositories
                 _repositories.Add(type, repositoryInstance);
             }
 
-            return (IGenericRepository<T>)_repositories[type];
+            return (IGenericRepository<T>)_repositories[type]!;
         }
 
         public async Task<int> Complete() => await _context.SaveChangesAsync();
